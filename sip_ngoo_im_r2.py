@@ -1,12 +1,3 @@
-"""_summary_
-解決方案
-🔹 對於 (1)：不自動選擇第一個選項
-
-在 Combobox 被選取時，不讓 current(0) 預設選擇第一個值，而是保持 "" (空白)。
-🔹 對於 (2)：允許直接輸入，不強制選取第一個值
-
-在 Combobox 獲得焦點時 (FocusIn 事件)，清除 Combobox 的當前內容，使使用者可以直接輸入。
-"""
 import tkinter as tk
 from tkinter import ttk
 
@@ -174,7 +165,6 @@ class SipNgooIm:
         self.combo_un_mu['values'] = un_mu_list
         self.combo_un_mu.grid(row=0, column=1, padx=5, pady=5)
         self.combo_un_mu.bind("<Return>", self.select_un_mu_by_enter)  # 按 Enter 選擇韻母
-        self.combo_un_mu.bind("<FocusIn>", self.clear_selection)  # 游標進入時清除選擇
 
         # 聲調輸入（下拉式選單）
         tk.Label(root, text="聲調:", font=font_style).grid(row=1, column=0, padx=5, pady=5)
@@ -183,8 +173,6 @@ class SipNgooIm:
         self.combo_tiau['values'] = list(tiau_dict.values())
         self.combo_tiau.grid(row=1, column=1, padx=5, pady=5)
         self.combo_tiau.bind("<KeyRelease>", self.update_tiau_display)  # 輸入時更新顯示
-        self.combo_tiau.bind("<FocusIn>", self.clear_selection)  # 游標進入時清除選擇
-        self.combo_tiau.bind("<FocusIn>", self.move_cursor_to_end)  # 游標進入時移到尾端
 
         # 聲母輸入（下拉式選單）
         tk.Label(root, text="聲母:", font=font_style).grid(row=2, column=0, padx=5, pady=5)
@@ -193,8 +181,6 @@ class SipNgooIm:
         self.combo_siann['values'] = siann_list  # 只顯示漢字聲母
         self.combo_siann.grid(row=2, column=1, padx=5, pady=5)
         self.combo_siann.bind("<KeyRelease>", self.update_siann_display)  # 輸入時更新顯示
-        self.combo_siann.bind("<FocusIn>", self.clear_selection)  # 游標進入時清除選擇
-        self.combo_siann.bind("<FocusIn>", self.move_cursor_to_end)  # 游標進入時移到尾端
 
         # 搜尋按鈕
         tk.Button(root, text="搜尋", font=font_style, command=self.search_han_ji).grid(row=3, column=0, columnspan=2, padx=5, pady=10)
@@ -236,14 +222,6 @@ class SipNgooIm:
         elif any(k.startswith(typed_text) for k in siann_dict):
             closest_match = next(siann_dict[k] for k in siann_dict if k.startswith(typed_text))
             self.combo_siann.set(closest_match)  # 顯示最相近的漢字聲母
-
-    def clear_selection(self, event):
-        """清除當前選擇"""
-        event.widget.set('')
-
-    def move_cursor_to_end(self, event):
-        """將游標移到選項的尾端"""
-        event.widget.icursor(tk.END)
 
     def search_han_ji(self):
         # 獲取使用者輸入的原始值
