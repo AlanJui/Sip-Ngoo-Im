@@ -1,0 +1,255 @@
+import tkinter as tk
+from tkinter import ttk
+
+import pandas as pd
+
+# 韻母對照表（不區分舒聲、促聲）
+un_mu_dict = {
+    "un": "君",
+    "ut": "君",
+    "ian": "堅",
+    "iat": "堅",
+    "im": "金",
+    "ip": "金",
+    "ui": "規",
+    "ee": "嘉",
+    "eeh": "嘉",
+    "an": "干",
+    "at": "干",
+    "ong": "公",
+    "ok": "公",
+    "uai": "乖",
+    "uaih": "乖",
+    "ing": "經",
+    "ik": "經",
+    "uan": "觀",
+    "uat": "觀",
+    "oo": "沽",
+    "iau": "嬌",
+    "iauh": "嬌",
+    "ei": "稽",
+    "iong": "恭",
+    "iok": "恭",
+    "o": "高",
+    "oh": "高",
+    "ai": "皆",
+    "in": "巾",
+    "it": "巾",
+    "iang": "姜",
+    "iak": "姜",
+    "am": "甘",
+    "ap": "甘",
+    "ua": "瓜",
+    "uah": "瓜",
+    "ang": "江",
+    "ak": "江",
+    "iam": "兼",
+    "iap": "兼",
+    "au": "交",
+    "auh": "交",
+    "ia": "迦",
+    "iah": "迦",
+    "ue": "檜",
+    "ueh": "檜",
+    "ann": "監",
+    "ahnn": "監",
+    "u": "艍",
+    "uh": "艍",
+    "a": "膠",
+    "ah": "膠",
+    "i": "居",
+    "ih": "居",
+    "iu": "丩",
+    "enn": "更",
+    "ehnn": "更",
+    "uinn": "褌",
+    "io": "茄",
+    "ioh": "茄",
+    "inn": "梔",
+    "ihnn": "梔",
+    "ionn": "薑",
+    "iann": "驚",
+    "uann": "官",
+    "ng": "鋼",
+    "e": "伽",
+    "eh": "伽",
+    "ainn": "閒",
+    "oonn": "姑",
+    "m": "姆",
+    "uang": "光",
+    "uak": "光",
+    "uainn": "閂",
+    "uaihnn": "閂",
+    "uenn": "糜",
+    "iaunn": "嘄",
+    "iauhnn": "嘄",
+    "om": "箴",
+    "op": "箴",
+    "aunn": "爻",
+    "onn": "扛",
+    "ohnn": "扛",
+    "iunn": "牛",
+}
+
+# 韻母的傳統排序
+traditional_order = [
+    "君", "堅", "金", "規", "嘉", "干", "公", "乖", "經", "觀",
+    "沽", "嬌", "稽", "恭", "高", "皆", "巾", "姜", "甘", "瓜",
+    "江", "兼", "交", "迦", "檜", "監", "艍", "膠", "居", "丩",
+    "更", "褌", "茄", "梔", "薑", "驚", "官", "鋼", "伽", "閒",
+    "姑", "姆", "光", "閂", "糜", "嘄", "箴", "爻", "扛", "牛"
+]
+
+# 只顯示獨特的韻母名稱，並按照傳統排序
+un_mu_list = sorted(set(un_mu_dict.values()), key=lambda x: traditional_order.index(x))
+
+# 聲調對照表
+diao_dict = {
+    "1": "一（陰平）",
+    "2": "二（上声）",
+    "3": "三（陰去）",
+    "4": "四（陰入）",
+    "5": "五（陽平）",
+    "6": "六（上声）",
+    "7": "七（陽去）",
+    "8": "八（陽入）",
+}
+
+# 聲母對照表
+siann_dict = {
+    "l": "柳",
+    "n": "耐",
+    "p": "邊",
+    "k": "求",
+    "kh": "去",
+    "t": "地",
+    "ph": "頗",
+    "th": "他",
+    "z": "曾",
+    "j": "入",
+    "s": "時",
+    "q": "英",
+    "b": "門",
+    "m": "毛",
+    "g": "語",
+    "ng": "雅",
+    "c": "出",
+    "h": "喜",
+}
+
+# 只顯示漢字聲母
+siann_list = list(siann_dict.values())
+
+# 讀取 Excel 字典
+file_path = "D100_彙集雅俗通十五音字典.xlsx"
+df_dict = pd.read_excel(file_path, sheet_name="彙集雅俗通字典")
+
+def search_hanzi(un_mu: str, tiau: str, siann: str):
+    """ 檢索符合條件的漢字 """
+    results = df_dict[(df_dict["韻"] == un_mu) & (df_dict["調"].astype(str) == tiau) & (df_dict["聲"] == siann)]
+    return results[["漢字", "十五音標音"]].head(5)
+
+class SipNgooIm:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("閩南話輸入法 (河洛白話)")
+        self.root.geometry("600x500")
+
+        # 設定字型
+        font_style = ("Helvetica", 18)
+
+        # 韻母輸入（下拉式選單）
+        tk.Label(root, text="韻母:", font=font_style).grid(row=0, column=0, padx=5, pady=5)
+        self.un_mu_var = tk.StringVar()
+        self.combo_yunmu = ttk.Combobox(root, textvariable=self.un_mu_var, font=font_style)
+        self.combo_yunmu['values'] = un_mu_list
+        self.combo_yunmu.grid(row=0, column=1, padx=5, pady=5)
+        self.combo_yunmu.bind("<Return>", self.select_un_mu_by_enter)  # 按 Enter 選擇韻母
+
+        # 聲調輸入（下拉式選單）
+        tk.Label(root, text="聲調:", font=font_style).grid(row=1, column=0, padx=5, pady=5)
+        self.diao_var = tk.StringVar()
+        self.combo_diao = ttk.Combobox(root, textvariable=self.diao_var, font=font_style)
+        self.combo_diao['values'] = list(diao_dict.values())
+        self.combo_diao.grid(row=1, column=1, padx=5, pady=5)
+        self.combo_diao.bind("<KeyRelease>", self.update_diao_display)  # 輸入時更新顯示
+
+        # 聲母輸入（下拉式選單）
+        tk.Label(root, text="聲母:", font=font_style).grid(row=2, column=0, padx=5, pady=5)
+        self.siann_var = tk.StringVar()
+        self.combo_siann = ttk.Combobox(root, textvariable=self.siann_var, font=font_style)
+        self.combo_siann['values'] = siann_list  # 只顯示漢字聲母
+        self.combo_siann.grid(row=2, column=1, padx=5, pady=5)
+        self.combo_siann.bind("<KeyRelease>", self.update_siann_display)  # 輸入時更新顯示
+
+        # 搜尋按鈕
+        tk.Button(root, text="搜尋", font=font_style, command=self.search_hanzi).grid(row=3, column=0, columnspan=2, padx=5, pady=10)
+
+        # 候選字列表
+        self.result_frame = ttk.Frame(root)
+        self.result_frame.grid(row=4, column=0, columnspan=2, padx=5, pady=5)
+        self.result_list = tk.Listbox(self.result_frame, height=5, width=30, font=font_style)
+        self.result_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scrollbar = tk.Scrollbar(self.result_frame)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.result_list.config(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.config(command=self.result_list.yview)
+
+    def select_un_mu_by_enter(self, event):
+        """當使用者輸入韻母碼後，按 Enter 鍵直接選擇對應的韻母"""
+        typed_text = self.un_mu_var.get()
+        if typed_text in un_mu_dict:
+            self.combo_yunmu.set(un_mu_dict[typed_text])  # 自動選擇對應的韻母
+        elif any(v.startswith(typed_text) for v in un_mu_list):
+            closest_match = next(v for v in un_mu_list if v.startswith(typed_text))
+            self.combo_yunmu.set(closest_match)  # 選擇最相近的韻母
+
+    def update_diao_display(self, event):
+        """根據輸入的數字更新聲調顯示"""
+        typed_text = self.diao_var.get()
+        if typed_text in diao_dict:
+            self.combo_diao.set(diao_dict[typed_text])  # 顯示對應的中文調號
+        elif any(k.startswith(typed_text) for k in diao_dict):
+            closest_match = next(diao_dict[k] for k in diao_dict if k.startswith(typed_text))
+            self.combo_diao.set(closest_match)  # 顯示最相近的調號
+
+    def update_siann_display(self, event):
+        """根據輸入的羅馬拼音更新聲母顯示"""
+        typed_text = self.siann_var.get()
+        # 如果輸入的是羅馬拼音字母，則查找對應的漢字聲母
+        if typed_text in siann_dict:
+            self.combo_siann.set(siann_dict[typed_text])  # 顯示對應的漢字聲母
+        elif any(k.startswith(typed_text) for k in siann_dict):
+            closest_match = next(siann_dict[k] for k in siann_dict if k.startswith(typed_text))
+            self.combo_siann.set(closest_match)  # 顯示最相近的漢字聲母
+
+    def search_hanzi(self):
+        # 獲取使用者輸入的原始值
+        un_mu_input = self.un_mu_var.get().strip()  # 韻母輸入值
+        diao_input = self.diao_var.get().strip()    # 聲調輸入值
+        siann_input = self.siann_var.get().strip()  # 聲母輸入值
+
+        # 將聲調的中文顯示值轉換回阿拉伯數字
+        diao = next((k for k, v in diao_dict.items() if v == diao_input), diao_input)
+
+        # 將聲母的漢字顯示值轉換回羅馬拼音字母
+        siann = next((k for k, v in siann_dict.items() if v == siann_input), siann_input)
+
+        # 將韻母的漢字顯示值轉換回羅馬拼音字母
+        un_mu = next((k for k, v in un_mu_dict.items() if v == un_mu_input), un_mu_input)
+
+        # 執行搜尋
+        results = search_hanzi(un_mu, diao, siann)
+
+        # 顯示結果
+        self.result_list.delete(0, tk.END)
+        if results.empty:
+            self.result_list.insert(tk.END, "❌ 找不到符合條件的漢字")
+        else:
+            for _, row in results.iterrows():
+                self.result_list.insert(tk.END, f"{row['漢字']} ({row['十五音標音']})")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SipNgooIm(root)
+    root.mainloop()
