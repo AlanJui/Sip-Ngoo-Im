@@ -4,7 +4,7 @@
 # 河洛白話音
 #
 ---
-name: tl_ji_khoo_peh_ue
+name: tl_han_ji_khoo
 version: "v0.1.0.0"
 sort: by_weight
 use_preset_vocabulary: false
@@ -15,7 +15,7 @@ columns:
   - stem    # 用法舉例
   - create  # 建立時間
 import_tables:
-  - tl_han_ji_khoo
+  # - tl_ji_khoo_kah_kut_bun
 ...
 㔂	lan5	0.1	NA	2026-01-02 22:50:38
 㜅	thik4	0.01	NA	2025-02-11 11:16:04
