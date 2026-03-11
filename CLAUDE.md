@@ -79,6 +79,24 @@ python tools/convert_tlpa_to_bp_for_rime_dict.py
 
 優先修改 Excel 資料源（`tools/tlpa_ji_khoo.xlsx`）或執行轉換腳本，而非直接編輯 `.dict.yaml`。
 
+## 已知坑洞
+
+### WeaselDeployer.exe 觸發【輸入法設定】視窗
+
+`WeaselDeployer.exe` 在以下兩種情況會自動開啟【輸入法設定】視窗：
+
+1. 未傳入 `/deploy` 參數
+2. **Shell 本身的工作目錄**中找不到 `default.custom.yaml`
+
+注意：`Start-Process -WorkingDirectory` 只設定子程序的工作目錄，**無法**滿足條件 2。必須在 Shell 層級先 `Set-Location`，再直接以 `&` 呼叫執行檔：
+
+```powershell
+Set-Location "$env:APPDATA\Rime"
+& "C:\Program Files\Rime\weasel-*\WeaselDeployer.exe" /deploy
+```
+
+`redeploy_rime.ps1` 已按此方式實作。
+
 ## 開發規範
 
 1. **YAML 縮排**：Rime 的 YAML 對縮排極為敏感，必須保持原有風格（2 空格）。
