@@ -1,0 +1,204 @@
+name: "Build & Release YAML bundles (ALL / TLPA / ZU2 / BP)"
+
+permissions:
+  contents: write # ★ 讓 GITHUB_TOKEN 可發 Release / 建 tag
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "kb-*"
+      - "bp-*"
+      - "zu-*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch 或 commit（例：main／a1b2c3d）"
+        required: true
+        default: "main"
+      tag_name:
+        description: "Release tag（例：v0.9.0）"
+        required: true
+      prerelease:
+        description: "是否標示為 pre-release"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  build-bundles:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve ref / tag
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "REF=${{ github.event.inputs.ref }}" >> $GITHUB_OUTPUT
+            echo "TAG=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+            echo "PRERELEASE=${{ github.event.inputs.prerelease }}" >> $GITHUB_OUTPUT
+          else
+            echo "REF=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "TAG=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+          echo "Resolved REF=$(cat $GITHUB_OUTPUT | sed -n 's/^REF=//p'), TAG=$(cat $GITHUB_OUTPUT | sed -n 's/^TAG=//p')"
+
+      - name: Checkout repository at ref
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.meta.outputs.REF }}
+
+      - name: Build 4 bundles (ALL/TLPA/ZU2/BP)
+        shell: bash
+        env:
+          TAG: ${{ steps.meta.outputs.TAG }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob nocaseglob
+
+          echo "== [DEBUG] pwd: $(pwd) =="
+          ls -l *.yaml || true
+
+          PREFIX=""   # 若檔案不在根目錄，改成例如：PREFIX="rime/"
+
+          mkdir -p dist
+
+          make_zip() {
+            local name="$1"; shift
+            local listfile="$1"; shift
+            local zip="dist/rime-tlpa-${name}-${TAG}.zip"
+
+            if [[ -s "$listfile" ]]; then
+              echo ">>> Packing ${name} ($(wc -l < "$listfile") files)"
+              zip -j "$zip" -@ < "$listfile" >/dev/null
+              (cd dist && sha256sum "$(basename "$zip")" > "$(basename "$zip").sha256")
+              ls -lh "dist/$(basename "$zip")"
+            else
+              echo "::warning::Skip ${name} (no files)"
+            fi
+          }
+
+          # ---------- ALL ----------
+          # 1) 優先使用 release-include.txt；2) 不存在就抓根目錄所有 *.yaml
+          ALL_LIST="dist/_all.list"
+          if [[ -f release-include.txt ]]; then
+            echo "Use release-include.txt for ALL"
+            awk 'NR==1{sub(/^\xef\xbb\xbf/,"")}{print}' release-include.txt \
+              | sed -e 's/\r$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+              | sed -e '/^$/d' -e '/^#/d' \
+              | while read -r p; do
+                  [[ -z "$p" ]] && continue
+                  f="${PREFIX}${p}"
+                  [[ -f "$f" ]] && echo "$f"
+                done > "$ALL_LIST"
+          else
+            echo "No release-include.txt, fallback to *.yaml"
+            : > "$ALL_LIST"
+            for f in ${PREFIX}*.yaml; do
+              [[ -f "$f" ]] && echo "$f" >> "$ALL_LIST"
+            done
+          fi
+
+          # ---------- COMMON：各方案共用 ----------
+          COMMON_LIST="dist/_common.list"
+          : > "$COMMON_LIST"
+          for p in \
+            rime.lua \
+            keymap_piau_tian.yaml \
+            lib_hau_suan_ji_tuann.yaml \
+            lib_phing_im.yaml \
+            lib_sip_ngoo_im.yaml \
+            lib_sip_ngoo_im2.yaml \
+            lib_zu_im.yaml
+          do
+            f="${PREFIX}${p}"
+            [[ -f "$f" ]] && echo "$f" >> "$COMMON_LIST" || echo "::warning::Missing COMMON: $f"
+          done
+
+          # ---------- TLPA 專屬 ----------
+          TLPA_LIST="dist/_tlpa.list"
+          : > "$TLPA_LIST"
+          for pat in \
+            tlpa_*.yaml tlpa_*.schema.yaml \
+            tl_ji_khoo_*.dict.yaml
+          do
+            for f in ${PREFIX}${pat}; do
+              [[ -f "$f" ]] && echo "$f" >> "$TLPA_LIST"
+            done
+          done
+          # 排除任何 *kb*（鍵盤練習工具）
+          sed -i -e '/kb.*\.schema\.yaml/Id' "$TLPA_LIST" || true
+
+          # ---------- 注音二式（ZU2）專屬 ----------
+          ZU2_LIST="dist/_zu2.list"
+          : > "$ZU2_LIST"
+          for pat in \
+            zu_im_2*.yaml zu_im_2*.schema.yaml
+          do
+            for f in ${PREFIX}${pat}; do
+              [[ -f "$f" ]] && echo "$f" >> "$ZU2_LIST"
+            done
+          done
+          sed -i -e '/kb.*\.schema\.yaml/Id' "$ZU2_LIST" || true
+
+          # ---------- BP 專屬 ----------
+          BP_LIST="dist/_bp.list"
+          : > "$BP_LIST"
+          for pat in \
+            bp_*.yaml bp_*.schema.yaml
+          do
+            for f in ${PREFIX}${pat}; do
+              [[ -f "$f" ]] && echo "$f" >> "$BP_LIST"
+            done
+          done
+          sed -i -e '/kb.*\.schema\.yaml/Id' "$BP_LIST" || true
+
+          # ---------- 鍵盤練習工具（只放 All） ----------
+          KB_LIST="dist/_kb.list"
+          : > "$KB_LIST"
+          for pat in \
+            kb_*.schema.yaml \
+            *_kb*.schema.yaml
+          do
+            for f in ${PREFIX}${pat}; do
+              [[ -f "$f" ]] && echo "$f" >> "$KB_LIST"
+            done
+          done
+
+          # --------- 合併清單 ----------
+          sort -u "$ALL_LIST" > dist/all.final
+          cat "$COMMON_LIST" "$TLPA_LIST" | sort -u > dist/tlpa.final
+          cat "$COMMON_LIST" "$ZU2_LIST"  | sort -u > dist/zu2.final
+          cat "$COMMON_LIST" "$BP_LIST"   | sort -u > dist/bp.final
+
+          # All 另外把 KB 與 COMMON 也併進去（確保 rime.lua 等共用檔被包含）
+          cat dist/all.final "$COMMON_LIST" "$KB_LIST" | sort -u > dist/all.plus
+
+          # 簡易偵測：確認 rime.lua 是否出現在各包清單
+          for pkg in tlpa zu2 bp; do
+            echo "[DEBUG] ${pkg}.final lines: $(wc -l < dist/${pkg}.final)"
+            grep -n "rime\.lua" "dist/${pkg}.final" || echo "[DEBUG] rime.lua not found in dist/${pkg}.final"
+          done
+          echo "[DEBUG] all.plus lines: $(wc -l < dist/all.plus)"
+          grep -n "rime\.lua" dist/all.plus || echo "[DEBUG] rime.lua not found in all.plus (will still proceed)"
+
+          echo "== COUNT =="
+          echo "ALL: $(wc -l < dist/all.plus) | TLPA: $(wc -l < dist/tlpa.final) | ZU2: $(wc -l < dist/zu2.final) | BP: $(wc -l < dist/bp.final)"
+
+          # --------- 打包 ----------
+          make_zip "all"  "dist/all.plus"
+          make_zip "tlpa" "dist/tlpa.final"
+          make_zip "zu2"  "dist/zu2.final"
+          make_zip "bp"   "dist/bp.final"
+
+      - name: Create / Update GitHub Release + upload 4 assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.TAG }}
+          target_commitish: ${{ steps.meta.outputs.REF }}
+          prerelease: ${{ github.event.inputs.prerelease || false }} # ← 布林，不用字串
+          files: |
+            dist/*.zip
+            dist/*.sha256
